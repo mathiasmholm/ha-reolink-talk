@@ -9,10 +9,6 @@ from .talk_live_view import async_register_views
 PLATFORMS: list[str] = ["media_player"]
 
 
-async def async_setup(_hass: HomeAssistant, _config: dict) -> bool:
-    return True
-
-
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Default options: all current Reolink config entries, channel 0.
     if not entry.options:
