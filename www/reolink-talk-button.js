@@ -9,8 +9,8 @@
 //     - type: custom:reolink-talk-button
 //       camera: front_door   # slugified Reolink camera name, e.g. "Front Door" -> front_door
 //       style:
-//         bottom: 10px
-//         left: 10px   # bottom-left corner avoids overlapping PTZ controls
+//         bottom: 15px
+//         left: 10%   # avoids overlapping advanced-camera-card's PTZ controls
 //
 // The camera value must match the slug of one of your Reolink camera names
 // (the same name used to build the "Reolink Talk <name>" media_player entity
