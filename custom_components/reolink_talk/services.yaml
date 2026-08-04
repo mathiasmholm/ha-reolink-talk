@@ -1,3 +1,0 @@
-cleanup_old_webrtc_entities:
-  name: Cleanup Old WebRTC Entities
-  description: Remove legacy WebRTC/YAML media_player entities from the entity registry (the *_webrtc_old entries).

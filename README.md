@@ -1,5 +1,9 @@
 # ha-reolink-talk
 
+[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![GitHub release](https://img.shields.io/github/v/release/mathiasmholm/ha-reolink-talk)](https://github.com/mathiasmholm/ha-reolink-talk/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 A native Home Assistant custom integration that adds **two-way audio ("talk")** to Reolink cameras connected through a **Reolink Home Hub / NVR**, using the reverse-engineered **Baichuan** protocol. No separate server, no extra process — everything runs inside Home Assistant's own HTTP server.
 
 > This is a fork/extension of [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk) (MIT licensed). The original project's README flags that two-way audio may not be usable when a camera sits behind an NVR/Home Hub — this fork specifically adds multi-channel Home Hub support, plus a live/streaming push-to-talk mode with an inline Lovelace button, on top of the original's one-shot `media_player` playback. See [Credits](#credits) below.
@@ -8,6 +12,8 @@ Two ways to talk to your camera:
 
 - **One-shot playback** — send a TTS message or audio file to the camera speaker via a `media_player` entity (`media_player.play_media`), just like any other HA media player.
 - **Live push-to-talk** — a microphone button that streams your voice to the camera in near real time, embedded directly on top of your existing camera card in Lovelace (no duplicate video stream, no extra dashboard page).
+
+**Contents:** [Why this exists](#why-this-exists) · [Features](#features) · [Requirements](#requirements) · [Installation](#installation) · [Configuration](#configuration) · [Usage](#usage) · [How it works](#how-it-works-protocol-notes) · [Known limitations](#known-limitations) · [Credits](#credits)
 
 ## Why this exists
 
@@ -39,28 +45,19 @@ Reolink's official two-way audio only works through the Reolink app. There was n
 - **Option B (manual):** copy `custom_components/reolink_talk/` into your HA `config/custom_components/` directory.
 - Either way, also copy `www/reolink-talk-button.js` into your HA `config/www/` directory (it will be served automatically at `/local/reolink-talk-button.js`).
 
-**Step 2 — set your camera details.** Edit `custom_components/reolink_talk/talk_live_view.py` and update:
+**Step 2 — restart Home Assistant.**
 
-```python
-HOME_HUB_HOST = "10.10.40.8"          # your Home Hub / NVR's IP
-CAMERA_CHANNELS = {
-    "front_door": 0,
-    "entrance": 1,
-    "living_room": 2,
-}
-```
+**Step 3 — add the integration.** Go to **Settings → Devices & Services → Add Integration**, search for **Reolink Talk**, and select the Reolink config entry it should attach to. There is nothing to configure by hand — no IP addresses or channel numbers to edit in source files — it automatically discovers every camera on the Reolink config entries you select (all of them, by default; change this any time via the integration's **Configure** button).
 
-`HOME_HUB_HOST` is your Home Hub/NVR's IP address. Each entry in `CAMERA_CHANNELS` is `"a short key you choose": <channel number>` — the channel number is the camera's position in the Baichuan channel list, typically the same order it appears in the Reolink app. You'll reuse these short keys later in your dashboard YAML.
+**Step 4 — find your media_player entity.** Go to **Settings → Devices & Services → Entities**, search "talk" — note the entity ID (e.g. `media_player.reolink_talk_front_door`), you'll need it for one-shot playback below.
 
-**Step 3 — restart Home Assistant.**
-
-**Step 4 — add the integration.** Go to **Settings → Devices & Services → Add Integration**, search for **Reolink Talk**, and select the Reolink config entry it should attach to.
-
-**Step 5 — find your media_player entity.** Go to **Settings → Devices & Services → Entities**, search "talk" — note the entity ID (e.g. `media_player.front_door_talk`), you'll need it for one-shot playback below.
-
-**Step 6 — register the Lovelace resource.** **Settings → Dashboards → ⋮ → Resources → Add Resource**, URL `/local/reolink-talk-button.js`, type **JavaScript Module**. Bump the `?v=` query string on the URL any time you update the file, to bust HA/Companion App caching.
+**Step 5 — register the Lovelace resource.** **Settings → Dashboards → ⋮ → Resources → Add Resource**, URL `/local/reolink-talk-button.js`, type **JavaScript Module**. Bump the `?v=` query string on the URL any time you update the file, to bust HA/Companion App caching.
 
 That's the full setup — everything below is how to use it.
+
+## Configuration
+
+The only thing you can configure is *which* Reolink config entries this integration should pull cameras from: **Settings → Devices & Services → Reolink Talk → Configure**. By default it uses all of them. This matters only if you run multiple, separate Reolink Home Hubs/NVRs and want to limit which ones get `media_player` talk entities and live-talk support.
 
 ## Usage
 
@@ -69,7 +66,7 @@ That's the full setup — everything below is how to use it.
 ```yaml
 service: media_player.play_media
 target:
-  entity_id: media_player.<your_camera>_talk
+  entity_id: media_player.reolink_talk_<your_camera>
 data:
   media_content_id: "Someone is at the door"
   media_content_type: music
@@ -87,14 +84,16 @@ cameras:
   - camera_entity: camera.your_camera
 elements:
   - type: custom:reolink-talk-button
-    camera: your_camera_key   # must match a key in CAMERA_CHANNELS (Installation, Step 2)
+    camera: front_door   # slugified Reolink camera name, see below
     style:
       bottom: 10px
       left: 50%
       transform: translateX(-50%)
 ```
 
-Tap once to start talking, tap again to stop. The button changes color to indicate state (idle / connecting / live / error). The `camera:` value must match one of the keys you set in `CAMERA_CHANNELS` during Step 2 of Installation.
+Tap once to start talking, tap again to stop. The button changes color to indicate state (idle / connecting / live / error).
+
+The `camera:` value must be the **slugified name** of the camera as reported by your Reolink hub — the same name used to build the `media_player.reolink_talk_<name>` entity (e.g. a camera named "Front Door" → `front_door`). If you're not sure what it is, tap the button once with any placeholder value; the connection will fail and Home Assistant's log (**Settings → System → Logs**, search for `reolink_talk`) will list every valid slug for your setup.
 
 ## How it works (protocol notes)
 
@@ -119,7 +118,7 @@ Tap once to start talking, tap again to stop. The button changes color to indica
 
 ## What's new compared to the original
 
-- Home Hub / NVR multi-channel support (`CAMERA_CHANNELS` mapping), addressing the original project's noted limitation that talk may not work for cameras behind an NVR/Home Hub.
+- Home Hub / NVR multi-channel support with automatic camera discovery (no source edits, no IP addresses to configure), addressing the original project's noted limitation that talk may not work for cameras behind an NVR/Home Hub.
 - Live/streaming push-to-talk over a WebSocket, instead of one-shot file/TTS playback only.
 - An inline Lovelace custom element (`reolink-talk-button`) that overlays the existing camera card with zero extra video connections.
 - Automatic recovery from stuck talk sessions (Baichuan rejection codes 400/421/422) and a client-side cooldown against rapid re-tap races.

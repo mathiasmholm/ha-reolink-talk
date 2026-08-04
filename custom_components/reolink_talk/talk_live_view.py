@@ -14,14 +14,15 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from pathlib import Path
 
 from aiohttp import WSMsgType, web
 
 from homeassistant.components.http import HomeAssistantView
+from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.util import slugify
 
+from .const import DOMAIN
 from .talk import (
     build_talk_config_variants,
     ima_adpcm_encode_dvi_blocks,
@@ -32,17 +33,43 @@ from .talk import (
 
 _LOGGER = logging.getLogger(__name__)
 
-HOME_HUB_HOST = "10.10.40.8"
-CAMERA_CHANNELS = {"terass": 0, "ingang": 1, "vardagsrum": 2}
+
+def _iter_camera_slugs(hass: HomeAssistant):
+    """Yield (slug, channel, config_entry) for every channel on every configured
+    Reolink hub.
+
+    The slug is derived from the camera name the hub itself reports -- the same
+    name used to build this integration's `media_player` entities -- so there is
+    nothing to hand-configure or keep in sync after a HACS update.
+    """
+    reolink_entry_ids = hass.data.get(DOMAIN, {}).get("reolink_entry_ids")
+    if not reolink_entry_ids:
+        reolink_entry_ids = [e.entry_id for e in hass.config_entries.async_entries("reolink")]
+
+    for entry_id in reolink_entry_ids:
+        entry: ConfigEntry | None = hass.config_entries.async_get_entry(entry_id)
+        if entry is None:
+            continue
+        runtime_data = getattr(entry, "runtime_data", None)
+        host = getattr(runtime_data, "host", None)
+        api = getattr(host, "api", None)
+        if api is None:
+            # Reolink entry exists but isn't fully set up (e.g. camera offline
+            # at HA startup); skip it rather than failing the whole lookup.
+            continue
+        for ch in api.channels:
+            try:
+                name = api.camera_name(ch) or f"channel_{ch}"
+            except Exception:
+                name = f"channel_{ch}"
+            yield slugify(name), ch, entry
 
 
-
-def _resolve_home_hub_entry(hass: HomeAssistant):
-    entries = hass.config_entries.async_entries("reolink")
-    for entry in entries:
-        if entry.data.get("host") == HOME_HUB_HOST:
-            return entry
-    return entries[0] if entries else None
+def _resolve_camera(hass: HomeAssistant, camera_query: str) -> tuple[ConfigEntry, int] | None:
+    for slug, ch, entry in _iter_camera_slugs(hass):
+        if slug == camera_query:
+            return entry, ch
+    return None
 
 
 class ReolinkTalkLiveWebSocketView(HomeAssistantView):
@@ -57,16 +84,18 @@ class ReolinkTalkLiveWebSocketView(HomeAssistantView):
         ws = web.WebSocketResponse(max_msg_size=0)
         await ws.prepare(request)
 
-        camera = request.query.get("camera", "vardagsrum")
-        channel = CAMERA_CHANNELS.get(camera)
-        if channel is None:
-            await ws.close(code=4000, message=f"unknown camera {camera!r}".encode())
+        camera = request.query.get("camera")
+        resolved = _resolve_camera(hass, camera) if camera else None
+        if resolved is None:
+            available = sorted({slug for slug, _ch, _e in _iter_camera_slugs(hass)})
+            hint = ", ".join(available) if available else "none discovered yet (is the Reolink integration loaded?)"
+            _LOGGER.error("Live talk: unknown/missing camera=%r. Available: %s", camera, hint)
+            await ws.close(
+                code=4000,
+                message=f"unknown camera {camera!r}. Available: {hint}".encode(),
+            )
             return ws
-
-        entry = _resolve_home_hub_entry(hass)
-        if entry is None:
-            await ws.close(code=4001, message=b"no reolink config entry found")
-            return ws
+        entry, channel = resolved
 
         _LOGGER.info("Live talk connected: camera=%s channel=%s", camera, channel)
 

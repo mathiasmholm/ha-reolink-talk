@@ -1,7 +1,7 @@
 {
   "domain": "reolink_talk",
   "name": "Reolink Talk (Two-Way Audio)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "codeowners": [],
   "config_flow": true,
   "documentation": "https://github.com/mathiasmholm/ha-reolink-talk",

@@ -7,16 +7,24 @@
 //
 //   elements:
 //     - type: custom:reolink-talk-button
-//       camera: vardagsrum   # terass | ingang | vardagsrum
+//       camera: front_door   # slugified Reolink camera name, e.g. "Front Door" -> front_door
 //       style:
 //         bottom: 10px
 //         left: 50%
 //         transform: translateX(-50%)
+//
+// The camera value must match the slug of one of your Reolink camera names
+// (the same name used to build the "Reolink Talk <name>" media_player entity
+// this integration creates). If unsure, connect once with any value -- the
+// resulting error in Home Assistant's logs lists every valid slug.
 
 class ReolinkTalkButton extends HTMLElement {
   setConfig(config) {
     this._config = config || {};
-    this._camera = this._config.camera || "vardagsrum";
+    this._camera = this._config.camera || "";
+    if (!this._camera) {
+      console.error("reolink-talk-button: missing required `camera:` config value");
+    }
     this._recording = false;
     this._wsReady = false;
     this._render();
