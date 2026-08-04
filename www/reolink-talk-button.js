@@ -38,6 +38,14 @@ class ReolinkTalkButton extends HTMLElement {
   }
 
   _render() {
+    // An inline SVG (not an emoji) so the icon looks identical on every
+    // platform -- emoji glyph rendering for U+1F399 varies wildly across
+    // Android/iOS WebView versions and can show up as an ugly fallback glyph.
+    const micSvg = `
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor" aria-hidden="true">
+        <path d="M12,2A3,3 0 0,1 15,5V11A3,3 0 0,1 12,14A3,3 0 0,1 9,11V5A3,3 0 0,1 12,2M19,11C19,14.53 16.39,17.44 13,17.93V21H11V17.93C7.61,17.44 5,14.53 5,11H7A5,5 0 0,0 12,16A5,5 0 0,0 17,11H19Z" />
+      </svg>
+    `;
     this.innerHTML = `
       <button id="rtb-btn" style="
         width: 48px;
@@ -46,7 +54,6 @@ class ReolinkTalkButton extends HTMLElement {
         border: none;
         background: rgba(0,0,0,0.5);
         color: #fff;
-        font-size: 22px;
         line-height: 1;
         display: flex;
         align-items: center;
@@ -57,7 +64,7 @@ class ReolinkTalkButton extends HTMLElement {
         cursor: pointer;
         box-shadow: 0 2px 8px rgba(0,0,0,0.4);
         transition: background 0.1s ease, transform 0.1s ease;
-      ">🎙️</button>
+      ">${micSvg}</button>
     `;
     this._btn = this.querySelector("#rtb-btn");
     this._cooldown = false;
