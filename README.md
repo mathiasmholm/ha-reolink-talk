@@ -87,11 +87,12 @@ elements:
     camera: front_door   # slugified Reolink camera name, see below
     style:
       bottom: 10px
-      left: 50%
-      transform: translateX(-50%)
+      left: 10px
 ```
 
 Tap once to start talking, tap again to stop. The button changes color to indicate state (idle / connecting / live / error).
+
+The bottom-left corner placement above is chosen to avoid overlapping `advanced-camera-card`'s PTZ controls, which are typically centered at the bottom of the card. Adjust `bottom`/`left` to taste for your own card layout.
 
 The `camera:` value must be the **slugified name** of the camera as reported by your Reolink hub — the same name used to build the `media_player.reolink_talk_<name>` entity (e.g. a camera named "Front Door" → `front_door`). If you're not sure what it is, tap the button once with any placeholder value; the connection will fail and Home Assistant's log (**Settings → System → Logs**, search for `reolink_talk`) will list every valid slug for your setup.
 
