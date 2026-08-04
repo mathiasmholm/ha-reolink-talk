@@ -68,26 +68,21 @@ class ReolinkTalkLiveWebSocketView(HomeAssistantView):
             await ws.close(code=4001, message=b"no reolink config entry found")
             return ws
 
-        data = entry.data
         _LOGGER.info("Live talk connected: camera=%s channel=%s", camera, channel)
 
-        from reolink_aio.api import Host
         from reolink_aio.baichuan import util as bc_util
         from reolink_aio.exceptions import ApiError
 
-        host = Host(
-            host=data["host"],
-            username=data["username"],
-            password=data["password"],
-            port=data.get("port"),
-            use_https=data.get("use_https"),
-            bc_port=data.get("baichuan_port", 9000),
-            aiohttp_get_session_callback=lambda: async_get_clientsession(hass),
-        )
-        bc = host.baichuan
+        # Reuse the Reolink core integration's already-connected Host/Baichuan
+        # session instead of opening a second, parallel connection to the Home
+        # Hub. The hub does not reliably handle multiple simultaneous Baichuan
+        # sessions -- opening a second one was causing intermittent UDP
+        # timeouts and stuck (421) talk sessions.
+        reolink_host = entry.runtime_data.host
+        api_host = reolink_host.api
+        bc = api_host.baichuan
         enc_used = None
         try:
-            await bc.login()
             ability_xml = await bc.send(cmd_id=10, channel=channel)
             ability = parse_talk_ability(ability_xml)
             if ability.audio_type.lower() != "adpcm":
@@ -169,10 +164,8 @@ class ReolinkTalkLiveWebSocketView(HomeAssistantView):
                     await bc.send(cmd_id=11, channel=channel, enc_type=enc_used)
                 except Exception as e:
                     _LOGGER.warning("cmd11 stop failed (ignored): %s", e)
-            try:
-                await host.logout()
-            except Exception:
-                pass
+            # Do NOT logout/close bc here -- this connection is owned by the
+            # core Reolink integration, we only borrowed it.
 
         return ws
 

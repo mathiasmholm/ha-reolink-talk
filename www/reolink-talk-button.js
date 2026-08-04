@@ -67,7 +67,6 @@ class ReolinkTalkButton extends HTMLElement {
   }
 
   _setVisualState(state) {
-    // state: "idle" | "connecting" | "live" | "error"
     if (!this._btn) return;
     const colors = {
       idle: "rgba(0,0,0,0.5)",
