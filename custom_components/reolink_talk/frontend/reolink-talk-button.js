@@ -15,7 +15,11 @@
 // The camera value must match the slug of one of your Reolink camera names
 // (the same name used to build the "Reolink Talk <name>" media_player entity
 // this integration creates). If unsure, connect once with any value -- the
-// resulting error in Home Assistant's logs lists every valid slug.
+// resulting error lists every valid slug.
+//
+// Auth: before opening the audio socket, a short-lived single-use token is
+// requested over Home Assistant's own authenticated WebSocket API. The audio
+// socket rejects any connection without a valid token.
 
 class ReolinkTalkButton extends HTMLElement {
   setConfig(config) {
@@ -92,10 +96,41 @@ class ReolinkTalkButton extends HTMLElement {
     this._btn.style.transform = state === "live" ? "scale(1.08)" : "scale(1)";
   }
 
+  _failWith(message, err) {
+    console.error("reolink-talk-button: " + message, err || "");
+    this._setVisualState("error");
+    this._recording = false;
+    setTimeout(() => this._setVisualState("idle"), 1500);
+  }
+
+  // Ask Home Assistant -- over its own authenticated WebSocket connection --
+  // for a short-lived token authorising one talk session on this camera.
+  async _requestToken() {
+    if (!this._hass || !this._hass.connection) {
+      throw new Error("Home Assistant connection not available to this element");
+    }
+    const result = await this._hass.connection.sendMessagePromise({
+      type: "reolink_talk/get_token",
+      camera: this._camera,
+    });
+    if (!result || !result.token) {
+      throw new Error("no token returned by reolink_talk/get_token");
+    }
+    return result.token;
+  }
+
   async _start() {
     if (this._recording) return;
     this._recording = true;
     this._setVisualState("connecting");
+
+    let token;
+    try {
+      token = await this._requestToken();
+    } catch (err) {
+      this._failWith("could not obtain talk token", err);
+      return;
+    }
 
     try {
       this._mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -107,16 +142,15 @@ class ReolinkTalkButton extends HTMLElement {
         },
       });
     } catch (err) {
-      console.error("reolink-talk-button: mic error", err);
-      this._setVisualState("error");
-      this._recording = false;
-      setTimeout(() => this._setVisualState("idle"), 1500);
+      this._failWith("mic error", err);
       return;
     }
 
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     this._ws = new WebSocket(
-      proto + "//" + location.host + "/api/reolink_talk/live_ws?camera=" + encodeURIComponent(this._camera)
+      proto + "//" + location.host + "/api/reolink_talk/live_ws" +
+      "?camera=" + encodeURIComponent(this._camera) +
+      "&token=" + encodeURIComponent(token)
     );
     this._ws.binaryType = "arraybuffer";
     this._wsReady = false;
