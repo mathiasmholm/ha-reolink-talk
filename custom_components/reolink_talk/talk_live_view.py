@@ -9,17 +9,30 @@ block-by-block in near real time.
 
 Runs inside Home Assistant's own HTTP server -- no separate process, no
 separate reverse-proxy host needed.
+
+Authentication
+--------------
+The audio WebSocket itself cannot use Home Assistant's normal bearer-token
+auth: the browser's WebSocket API cannot set request headers, and the mic
+capture path needs to open the socket directly. Instead, a short-lived
+single-use token is issued over Home Assistant's *authenticated* WebSocket API
+(`reolink_talk/get_token`) and must be presented as a query parameter when
+opening the audio socket. An unauthenticated caller has no way to obtain one.
 """
 from __future__ import annotations
 
 import asyncio
 import logging
+import secrets
+import time
 
+import voluptuous as vol
 from aiohttp import WSMsgType, web
 
+from homeassistant.components import websocket_api
 from homeassistant.components.http import HomeAssistantView
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.util import slugify
 
 from .const import DOMAIN
@@ -32,6 +45,49 @@ from .talk import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+# How long an issued live-talk token stays valid. Long enough to cover a slow
+# mic permission prompt, short enough that a leaked token is worthless.
+TOKEN_TTL_SECONDS = 30
+
+TOKEN_STORE_KEY = "live_talk_tokens"
+
+
+def _token_store(hass: HomeAssistant) -> dict[str, tuple[str, float]]:
+    """Return the {token: (camera_slug, expires_at)} store, creating it if needed."""
+    return hass.data.setdefault(DOMAIN, {}).setdefault(TOKEN_STORE_KEY, {})
+
+
+def _purge_expired(store: dict[str, tuple[str, float]]) -> None:
+    now = time.monotonic()
+    for token in [t for t, (_cam, exp) in store.items() if exp < now]:
+        store.pop(token, None)
+
+
+def _issue_token(hass: HomeAssistant, camera_slug: str) -> str:
+    """Mint a single-use token bound to one camera."""
+    store = _token_store(hass)
+    _purge_expired(store)
+    token = secrets.token_urlsafe(32)
+    store[token] = (camera_slug, time.monotonic() + TOKEN_TTL_SECONDS)
+    return token
+
+
+def _consume_token(hass: HomeAssistant, token: str | None, camera_slug: str | None) -> bool:
+    """Validate and burn a token. Returns True only for a live, matching token."""
+    if not token or not camera_slug:
+        return False
+    store = _token_store(hass)
+    _purge_expired(store)
+    entry = store.pop(token, None)
+    if entry is None:
+        return False
+    issued_for, expires_at = entry
+    if expires_at < time.monotonic():
+        return False
+    # Bound to the camera it was issued for, so a token for a camera you can
+    # see can't be replayed against a different one.
+    return secrets.compare_digest(issued_for, camera_slug)
 
 
 def _iter_camera_slugs(hass: HomeAssistant):
@@ -72,20 +128,66 @@ def _resolve_camera(hass: HomeAssistant, camera_query: str) -> tuple[ConfigEntry
     return None
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): "reolink_talk/get_token",
+        vol.Required("camera"): str,
+    }
+)
+@callback
+def ws_get_token(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict) -> None:
+    """Issue a short-lived token for opening the live-talk audio socket.
+
+    This runs on Home Assistant's authenticated WebSocket API, so only a
+    logged-in user can reach it.
+    """
+    camera = msg["camera"]
+    if _resolve_camera(hass, camera) is None:
+        available = sorted({slug for slug, _ch, _e in _iter_camera_slugs(hass)})
+        hint = ", ".join(available) if available else "none discovered yet"
+        connection.send_error(
+            msg["id"],
+            "unknown_camera",
+            f"unknown camera {camera!r}. Available: {hint}",
+        )
+        return
+    connection.send_result(
+        msg["id"],
+        {"token": _issue_token(hass, camera), "ttl": TOKEN_TTL_SECONDS},
+    )
+
+
 class ReolinkTalkLiveWebSocketView(HomeAssistantView):
     """Accepts a live mic PCM stream and forwards it to the camera as talk audio."""
 
     url = "/api/reolink_talk/live_ws"
     name = "api:reolink_talk:live_ws"
+    # The browser WebSocket API cannot send an Authorization header, so this
+    # view authenticates via the single-use token issued over HA's own
+    # authenticated WebSocket API instead. See _consume_token().
     requires_auth = False
 
     async def get(self, request: web.Request):
         hass: HomeAssistant = request.app["hass"]
+
+        camera = request.query.get("camera")
+        token = request.query.get("token")
+
+        # Authenticate BEFORE upgrading the connection or touching camera
+        # lookups, so an unauthenticated caller learns nothing at all -- not
+        # even which cameras exist.
+        if not _consume_token(hass, token, camera):
+            _LOGGER.warning(
+                "Live talk: rejected unauthenticated connection from %s (camera=%r)",
+                request.remote,
+                camera,
+            )
+            return web.Response(status=401, text="invalid or expired talk token")
+
         ws = web.WebSocketResponse(max_msg_size=0)
         await ws.prepare(request)
 
-        camera = request.query.get("camera")
-        resolved = _resolve_camera(hass, camera) if camera else None
+        resolved = _resolve_camera(hass, camera)
         if resolved is None:
             available = sorted({slug for slug, _ch, _e in _iter_camera_slugs(hass)})
             hint = ", ".join(available) if available else "none discovered yet (is the Reolink integration loaded?)"
@@ -200,10 +302,11 @@ class ReolinkTalkLiveWebSocketView(HomeAssistantView):
 
 
 def async_register_views(hass: HomeAssistant) -> None:
-    """Register the live-talk views exactly once."""
+    """Register the live-talk views and token command exactly once."""
     key = "reolink_talk_live_views_registered"
     if hass.data.get(key):
         return
     hass.data[key] = True
     hass.http.register_view(ReolinkTalkLiveWebSocketView())
+    websocket_api.async_register_command(hass, ws_get_token)
     _LOGGER.info("Registered reolink_talk live-talk WebSocket view at /api/reolink_talk/live_ws")
