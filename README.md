@@ -151,16 +151,30 @@ curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
 
 This can't be fixed in application code, it's a browser security boundary. Set both your Internal URL and External URL to the same valid HTTPS hostname, never a raw IP.
 
-**⚠️ The live-talk endpoints are unauthenticated.** `requires_auth = False` is set on the HTTP views so the WebSocket can be opened from a plain browser connection without a bearer token. In practice this means **anyone who can reach your Home Assistant HTTP port can open a talk session to your cameras and speak through them.** The endpoint also returns the list of available camera names to an unauthenticated caller.
+## Authentication
+
+The audio WebSocket can't use Home Assistant's normal bearer-token auth, because the browser's WebSocket API can't set request headers. Instead, the Lovelace element requests a short-lived single-use token over Home Assistant's *authenticated* WebSocket API (`reolink_talk/get_token`) and presents it when opening the audio socket. Tokens expire after 30 seconds, are bound to one camera, and are consumed on use.
+
+An unauthenticated caller gets a `401` and learns nothing — not even which cameras exist. You can verify this on your own instance:
+
+```bash
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  https://your-ha-hostname/api/reolink_talk/live_ws
+```
+
+## Limitations
+
+**Push-to-talk needs genuinely valid HTTPS.** Browsers only expose `navigator.mediaDevices.getUserMedia` on pages served over HTTPS with a certificate valid for the exact hostname you connected to. If you reach Home Assistant on a raw IP such as `https://192.168.1.50:8123` while your certificate was issued for a domain name, most browsers and WebViews, Companion App included, disable `navigator.mediaDevices` entirely. The mic button then fails instantly with "undefined is not an object (evaluating 'navigator.mediaDevices.getUserMedia')".
+
+This can't be fixed in application code, it's a browser security boundary. Set both your Internal URL and External URL to the same valid HTTPS hostname, never a raw IP.
+
+**Tested on a narrow setup.** A Reolink Home Hub with battery cameras advertising ADPCM talk support. Other hub or NVR models, or other codecs, may need adjustment.
+
+**Some duplicated logic.** The one-shot and live paths each carry their own TalkConfig retry handling. Worth unifying at some point.
 
 Do not expose Home Assistant directly to the internet with this integration installed. Put an authenticating layer in front of it (Cloudflare Access, an authenticating reverse proxy, VPN-only access), or restrict `/api/reolink_talk/` to your LAN in whatever proxy sits ahead of HA:
 
-```nginx
-location /api/reolink_talk/ {
-    allow 10.10.0.0/16;   # your LAN
-    deny all;
-}
-```
 
 Fixing this properly means issuing a short-lived signed token over HA's authenticated WebSocket and requiring it on the audio socket. Contributions welcome.
 
