@@ -145,12 +145,6 @@ curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
 
 `101 Switching Protocols` means it's live. Note that this also demonstrates the endpoint is unauthenticated, see below.
 
-## Limitations
-
-**Push-to-talk needs genuinely valid HTTPS.** Browsers only expose `navigator.mediaDevices.getUserMedia` on pages served over HTTPS with a certificate valid for the exact hostname you connected to. If you reach Home Assistant on a raw IP such as `https://192.168.1.50:8123` while your certificate was issued for a domain name, most browsers and WebViews, Companion App included, disable `navigator.mediaDevices` entirely. The mic button then fails instantly with "undefined is not an object (evaluating 'navigator.mediaDevices.getUserMedia')".
-
-This can't be fixed in application code, it's a browser security boundary. Set both your Internal URL and External URL to the same valid HTTPS hostname, never a raw IP.
-
 ## Authentication
 
 The audio WebSocket can't use Home Assistant's normal bearer-token auth, because the browser's WebSocket API can't set request headers. Instead, the Lovelace element requests a short-lived single-use token over Home Assistant's *authenticated* WebSocket API (`reolink_talk/get_token`) and presents it when opening the audio socket. Tokens expire after 30 seconds, are bound to one camera, and are consumed on use.
