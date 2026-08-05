@@ -15,18 +15,16 @@ There are two ways to talk to a camera:
 
 This is a fork of [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk) (MIT). That project's README notes that talk-back may not work when a camera sits behind an NVR or Home Hub. This fork adds multi-channel Home Hub support and a live streaming mode on top of the original's one-shot playback. See [Credits](#credits).
 
-**Contents:** [Why this exists](#why-this-exists) · [Features](#features) · Requirements · #installation · [Configuration](#configuration) · [Usage](#usage) · [How it works](#how-it-works) · Troubleshooting · #limitations · [Whats different · #credits
-
 ## Why this exists
 
-Reolink's official two-way audio only works through the Reolink app. Getting it into Home Assistant has meant one of two things: ONVIF, which many Reolink models don't expose talk-back through, or running [/github.com/QuantumEntangledAndy/neolink) as a separate RTSP bridge.
+Reolink's official two-way audio only works through the Reolink app. Getting it into Home Assistant has meant one of two things: ONVIF, which many Reolink models don't expose talk-back through, or running [neolink](https://github.com/QuantumEntangledAndy/neolink) as a separate RTSP bridge.
 
 This integration speaks the Baichuan binary protocol directly from Home Assistant instead. The message framing was validated against neolink's reference implementation, and the ADPCM/BcMedia framing matches byte for byte.
 
 ## Features
 
 * Native `HomeAssistantView` HTTP and WebSocket endpoints, registered on HA's own web server.
-* IMA/DM encoding in Python, matched to whatever the camera advertises in `TalkAbility` (`length_per_encoder`, sample rate).
+* IMA/DVI-4 ADPCM encoding in Python, matched to whatever the camera advertises in `TalkAbility` (`length_per_encoder`, sample rate).
 * Config flow setup through the UI. No YAML, no IP addresses, no channel numbers to hand-edit.
 * One `media_player` entity per camera channel for TTS and file playback.
 * A Lovelace element, `reolink-talk-button`, served by the integration itself and registered automatically. No manual file copying, no Lovelace resource to add.
@@ -41,14 +39,16 @@ This integration speaks the Baichuan binary protocol directly from Home Assistan
 | [Reolink integration](https://www.home-assistant.io/integrations/reolink) | Already configured for your Home Hub or NVR. This integration reuses its credentials. |
 | [`reolink-aio`](https://github.com/starkillerOG/reolink_aio) | Comes along automatically with HA's Reolink integration. |
 | `ffmpeg` | Used to transcode audio for one-shot playback. Already in the official HA Docker and OS images. |
-| A camera with talk support | Must advertise ADPCM as its talk codec. Most Reolinkcameras with a speaker do. |
+| A camera with talk support | Must advertise ADPCM as its talk codec. Most Reolink cameras with a speaker do. |
 | [`advanced-camera-card`](https://github.com/dermotduffy/advanced-camera-card) | Only needed for the inline mic button, not for TTS. |
 
 ## Installation
 
 ### 1. Install
 
-**Through HACS.** Add this repo as a custom reptps://github.com/mathiasmholm/ha-reolink-talk`, category **Integration**), then install **Reolink Talk (Two-Way Audio*By hand.** Copy `custom_components/reolink_talk/` into your `config/custom_components/` directory.
+**Through HACS.** Add this repo as a custom repository (`https://github.com/mathiasmholm/ha-reolink-talk`, category **Integration**), then install **Reolink Talk (Two-Way Audio + Live Talk)**.
+
+**By hand.** Copy `custom_components/reolink_talk/` into your `config/custom_components/` directory.
 
 ### 2. Restart Home Assistant
 
@@ -66,7 +66,9 @@ There is one setting: which Reolink config entries this integration pulls camera
 
 ### One-shot playback
 
-Find your entity first: **Settings → Devices & Services → Entities**, search for "talk". You'll get something like `media_player.reolink_talk_front_door
+Find your entity first: **Settings → Devices & Services → Entities**, search for "talk". You'll get something like `media_player.reolink_talk_front_door`.
+
+```yaml
 service: media_player.play_media
 target:
   entity_id: media_player.reolink_talk_<your_camera>
@@ -128,7 +130,7 @@ A `421` from `TalkConfig` (or a `400` or `422`) means a previous session on that
 |---------|-------|
 | The button doesn't render at all | Cached frontend. Hard-reload the browser, or clear the frontend cache in the Companion App. |
 | "unknown camera" in the WebSocket response | Wrong slug in `camera:`. The error message lists every valid one. |
-| "undefined is not an object (evaluating 'navigator.mediaDevices.getUserMedia')" | Not a valid HTTPS origin. See #limitations. |
+| "undefined is not an object (evaluating 'navigator.mediaDevices.getUserMedia')" | Not a valid HTTPS origin. See [Limitations](#limitations). |
 | Talk fails with a `421` and doesn't recover | The camera has a stuck session. Restart the camera or the hub. |
 | `404` on `/api/reolink_talk/live_ws` | The integration isn't loaded. Check **Settings → Devices & Services** for errors. |
 
@@ -141,8 +143,6 @@ curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
 ```
 
 `101 Switching Protocols` means it's live. Note that this also demonstrates the endpoint is unauthenticated, see below.
-
-**Upgrading from a version before automatic frontend registration:** delete the `/local/reolink-talk-button.js` resource under **Settings → Dashboards → ⋮ → Resources**, and remove the file from `config/www/`. Leaving it in place loads the script twice.
 
 ## Limitations
 
@@ -183,4 +183,4 @@ Fixing this properly means issuing a short-lived signed token over HA's authenti
 
 ## License
 
-MIT, see `LICENSE`. Inherited from [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk).
+MIT, see [LICENSE](https://github.com/mathiasmholm/ha-reolink-talk/blob/main/LICENSE). Inherited from [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk).
