@@ -126,7 +126,7 @@ A `421` from `TalkConfig` (or a `400` or `422`) means a previous session on that
 
 | Symptom | Cause |
 |---------|-------|
-| The button doesn't render at all | Old `/local/reolink-talk-button.js` resource still registered under Dashboards, or a cached frontend. Remove the resource and clear the app cache. |
+| The button doesn't render at all | Cached frontend. Hard-reload the browser, or clear the frontend cache in the Companion App. |
 | "unknown camera" in the WebSocket response | Wrong slug in `camera:`. The error message lists every valid one. |
 | "undefined is not an object (evaluating 'navigator.mediaDevices.getUserMedia')" | Not a valid HTTPS origin. See #limitations. |
 | Talk fails with a `421` and doesn't recover | The camera has a stuck session. Restart the camera or the hub. |
