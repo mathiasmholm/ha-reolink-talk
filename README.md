@@ -142,7 +142,18 @@ A `421` from `TalkConfig` (or a `400` or `422`) means a previous session on that
 
 This can't be fixed in application code, it's a browser security boundary. Set both your Internal URL and External URL to the same valid HTTPS hostname, never a raw IP.
 
-**The endpoints are unauthenticated.** `requires_auth = False` is set on the HTTP views so the WebSocket can be opened from a plain browser connection without a bearer token. That keeps live talk simple, but it means anyone who can reach your HA HTTP port can reach these endpoints.
+**⚠️ The live-talk endpoints are unauthenticated.** `requires_auth = False` is set on the HTTP views so the WebSocket can be opened from a plain browser connection without a bearer token. In practice this means **anyone who can reach your Home Assistant HTTP port can open a talk session to your cameras and speak through them.** The endpoint also returns the list of available camera names to an unauthenticated caller.
+
+Do not expose Home Assistant directly to the internet with this integration installed. Put an authenticating layer in front of it (Cloudflare Access, an authenticating reverse proxy, VPN-only access), or restrict `/api/reolink_talk/` to your LAN in whatever proxy sits ahead of HA:
+
+```nginx
+location /api/reolink_talk/ {
+    allow 10.10.0.0/16;   # your LAN
+    deny all;
+}
+```
+
+Fixing this properly means issuing a short-lived signed token over HA's authenticated WebSocket and requiring it on the audio socket. Contributions welcome.
 
 **Tested on a narrow setup.** A Reolink Home Hub with battery cameras advertising ADPCM talk support. Other hub or NVR models, or other codecs, may need adjustment.
 
