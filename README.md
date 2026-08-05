@@ -1,8 +1,8 @@
 # ha-reolink-talk
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![GitHub release](https://img.shields.io/github/v/release/mathiasmholm/ha-reolink-talk)](https://github.com/mathiasmholm/ha-reolink-talk/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![hacs_badge](https://img.shields.io/badge/HACS-Custhttps://github.com/hacs/integration)
+[![GitHub release](https://img.shields.io/github/v/release/mink-talk](https://github.com/mathiasmholm/ha-reolink-talk/releases)
+https://img.shields.io/badge/License-MIT-yellow.svg](LICENSE)
 
 Two-way audio for Reolink cameras in Home Assistant, including cameras behind a Reolink Home Hub or NVR. Everything runs inside Home Assistant's own HTTP server, so there is no separate process, no extra port and no reverse proxy.
 
@@ -13,23 +13,24 @@ There are two ways to talk to a camera:
 | **One-shot playback** | Send TTS or an audio file to the camera speaker, like any other media player | `media_player.play_media` |
 | **Live push-to-talk** | A mic button on your existing camera card that streams your voice in near real time | `custom:reolink-talk-button` |
 
-This is a fork of [joeblack2k/ub.com/joeblack2k/reolink_talk (MIT). That project's README notes that talk-back may not work when a camera sits behind an NVR or Home Hub. This fork adds multi-channel Home Hub support and a live streaming mode on top of the original's one-shot playback. See [Credits](#credits).
+This is a fork of [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk) (MIT). That project's README notes that talk-back may not work when a camera sits behind an NVR or Home Hub. This fork adds multi-channel Home Hub support and a live streaming mode on top of the original's one-shot playback. See [Credits](#credits).
 
-**Contents:** Why this exists · #features · [Requirements](#requirements) · [Installation](#installation) · [Configuration](#configuration) · [Usage](#usage) · How it works · #limitations · [What's different· #credits
+**Contents:** [Why this exists](#why-this-exists) · [Features](#features) · Requirements · #installation · [Configuration](#configuration) · [Usage](#usage) · [How it works](#how-it-works) · Troubleshooting · #limitations · [Whats different · #credits
 
 ## Why this exists
 
-Reolink's official two-way audio only works through the Reolink app. Getting it into Home Assistant has meant one of two things: ONVIF, which many Reolink models don't expose talk-back through, or runningithub.com/QuantumEntangledAndy/neolink as a separate RTSP bridge.
+Reolink's official two-way audio only works through the Reolink app. Getting it into Home Assistant has meant one of two things: ONVIF, which many Reolink models don't expose talk-back through, or running [/github.com/QuantumEntangledAndy/neolink) as a separate RTSP bridge.
 
 This integration speaks the Baichuan binary protocol directly from Home Assistant instead. The message framing was validated against neolink's reference implementation, and the ADPCM/BcMedia framing matches byte for byte.
 
 ## Features
 
 * Native `HomeAssistantView` HTTP and WebSocket endpoints, registered on HA's own web server.
-* IMA/DVI-4 ADPCM encoding in Python, matched to whatever the camera advertisesoder`, sample rate).
+* IMA/DM encoding in Python, matched to whatever the camera advertises in `TalkAbility` (`length_per_encoder`, sample rate).
 * Config flow setup through the UI. No YAML, no IP addresses, no channel numbers to hand-edit.
 * One `media_player` entity per camera channel for TTS and file playback.
-* A drop-in Lovelace element, `reolink-talk-button`, that overlays a camera card you already have. Tapping it opens an audio WebSocket only, reusing the video connection the card already holds open.
+* A Lovelace element, `reolink-talk-button`, served by the integration itself and registered automatically. No manual file copying, no Lovelace resource to add.
+* The element overlays a camera card you already have. Tapping it opens an audio WebSocket only, reusing the video connection the card already holds open.
 * Automatic recovery from a talk session the camera never closed. Baichuan rejection codes 400, 421 and 422 trigger a stop and one retry.
 * Client-side cooldown so rapid re-tapping doesn't race itself.
 
@@ -37,21 +38,17 @@ This integration speaks the Baichuan binary protocol directly from Home Assistan
 
 | Requirement | Notes |
 |-------------|-------|
-| [Reolink integration](https://www.home-assistant.io/integrations/reme Hub or NVR. This integration reuses its credentials. |
-| [`reolink-aio`](https://github.com/starkillerOG/tomatically with HA's Reolink integration. |
+| [Reolink integration](https://www.home-assistant.io/integrations/reolink) | Already configured for your Home Hub or NVR. This integration reuses its credentials. |
+| [`reolink-aio`](https://github.com/starkillerOG/reolink_aio) | Comes along automatically with HA's Reolink integration. |
 | `ffmpeg` | Used to transcode audio for one-shot playback. Already in the official HA Docker and OS images. |
-| A camera with talk support | Must advertise ADPCM as its talk codec. Most Reolink battery and PoE cameras with a speaker do. |
-| [`advanced-camera-card`](https://github.com/dermotduffy/advanced-camera-cardline mic button, not for TTS. |
+| A camera with talk support | Must advertise ADPCM as its talk codec. Most Reolinkcameras with a speaker do. |
+| [`advanced-camera-card`](https://github.com/dermotduffy/advanced-camera-card) | Only needed for the inline mic button, not for TTS. |
 
 ## Installation
 
-### 1. Get the files onto your instance
+### 1. Install
 
-**Through HACS.** Add this repo as a custom repository (`https://github.com/mathiasmholm/ha-reolink-talk`, category **Integration**), then install **Reolink Talk (Two-Way Audio + Live Talk)**. This handles `custom_components/reolink_talk/` for you. The frontend file still has to be copied manually, see below.
-
-**By hand.** Copy `custom_components/reolink_talk/` into your `config/custom_components/` directory.
-
-Either way, copy `www/reolink-talk-button.js` into `config/www/`. Home Assistant serves it at `/local/reolink-talk-button.js`.
+**Through HACS.** Add this repo as a custom reptps://github.com/mathiasmholm/ha-reolink-talk`, category **Integration**), then install **Reolink Talk (Two-Way Audio*By hand.** Copy `custom_components/reolink_talk/` into your `config/custom_components/` directory.
 
 ### 2. Restart Home Assistant
 
@@ -59,18 +56,7 @@ Either way, copy `www/reolink-talk-button.js` into `config/www/`. Home Assistant
 
 Go to **Settings → Devices & Services → Add Integration**, search for **Reolink Talk**, and pick the Reolink config entry it should attach to. It discovers every camera on that entry by itself.
 
-### 4. Find your entity
-
-**Settings → Devices & Services → Entities**, search for "talk". You'll get something like `media_player.reolink_talk_front_door`. You need this for TTS.
-
-### 5. Register the Lovelace resource
-
-**Settings → Dashboards → ⋮ → Resources → Add Resource.**
-
-* URL: `/local/reolink-talk-button.js`
-* Type: **JavaScript Module**
-
-Bump the `?v=` on that URL whenever you update the file, otherwise the Companion App keeps serving the cached copy.
+That's it. The Lovelace element is served and registered by the integration, so there is nothing to copy into `www/` and no resource to add under Dashboards.
 
 ## Configuration
 
@@ -80,7 +66,7 @@ There is one setting: which Reolink config entries this integration pulls camera
 
 ### One-shot playback
 
-```yaml
+Find your entity first: **Settings → Devices & Services → Entities**, search for "talk". You'll get something like `media_player.reolink_talk_front_door
 service: media_player.play_media
 target:
   entity_id: media_player.reolink_talk_<your_camera>
@@ -136,6 +122,28 @@ For live talk, the browser captures mic audio via `getUserMedia` and `AudioConte
 
 A `421` from `TalkConfig` (or a `400` or `422`) means a previous session on that channel wasn't torn down cleanly. The integration sends a stop (`cmd 11`) and retries once.
 
+## Troubleshooting
+
+| Symptom | Cause |
+|---------|-------|
+| The button doesn't render at all | Old `/local/reolink-talk-button.js` resource still registered under Dashboards, or a cached frontend. Remove the resource and clear the app cache. |
+| "unknown camera" in the WebSocket response | Wrong slug in `camera:`. The error message lists every valid one. |
+| "undefined is not an object (evaluating 'navigator.mediaDevices.getUserMedia')" | Not a valid HTTPS origin. See #limitations. |
+| Talk fails with a `421` and doesn't recover | The camera has a stuck session. Restart the camera or the hub. |
+| `404` on `/api/reolink_talk/live_ws` | The integration isn't loaded. Check **Settings → Devices & Services** for errors. |
+
+To check that the endpoint is reachable:
+
+```bash
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Version: 13" -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  https://your-ha-hostname/api/reolink_talk/live_ws
+```
+
+`101 Switching Protocols` means it's live. Note that this also demonstrates the endpoint is unauthenticated, see below.
+
+**Upgrading from a version before automatic frontend registration:** delete the `/local/reolink-talk-button.js` resource under **Settings → Dashboards → ⋮ → Resources**, and remove the file from `config/www/`. Leaving it in place loads the script twice.
+
 ## Limitations
 
 **Push-to-talk needs genuinely valid HTTPS.** Browsers only expose `navigator.mediaDevices.getUserMedia` on pages served over HTTPS with a certificate valid for the exact hostname you connected to. If you reach Home Assistant on a raw IP such as `https://192.168.1.50:8123` while your certificate was issued for a domain name, most browsers and WebViews, Companion App included, disable `navigator.mediaDevices` entirely. The mic button then fails instantly with "undefined is not an object (evaluating 'navigator.mediaDevices.getUserMedia')".
@@ -163,16 +171,16 @@ Fixing this properly means issuing a short-lived signed token over HA's authenti
 
 * Home Hub and NVR multi-channel support with automatic camera discovery. No source edits, no IP addresses to configure. This addresses the limitation the original project called out.
 * Live streaming push-to-talk over WebSocket, rather than one-shot playback only.
-* The `reolink-talk-button` Lovelace element, overlaying an existing card without opening a second video connection.
+* The `reolink-talk-button` Lovelace element, served and registered by the integration, overlaying an existing card without opening a second video connection.
 * Automatic recovery from stuck talk sessions, plus a cooldown against rapid re-tap races.
 
 ## Credits
 
-* https://github.com/joeblack2k/reolink_talk, the project this is forked from. It introduced the `media_player` one-shot approach and the `TalkAbility`/ADPCM handling for standalone cameras.
-* https://github.com/QuantumEntangledAndy/neolink, the reference implementation used to validate Baichuan and BcMedia framing.
-* https://github.com/starkillerOG/reolink_aio, the Baichuan client library underneath all of this, also used by HA's core Reolink integration.
-* https://github.com/dermotduffy/advanced-camera-card, the card the talk button overlays.
+* [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk), the project this is forked from. It introduced the `media_player` one-shot approach and the `TalkAbility`/ADPCM handling for standalone cameras.
+* [neolink](https://github.com/QuantumEntangledAndy/neolink), the reference implementation used to validate Baichuan and BcMedia framing.
+* [reolink_aio](https://github.com/starkillerOG/reolink_aio), the Baichuan client library underneath all of this, also used by HA's core Reolink integration.
+* [advanced-camera-card](https://github.com/dermotduffy/advanced-camera-card), the card the talk button overlays.
 
 ## License
 
-MIT, see `LICENSE`. Inherited from https://github.com/joeblack2k/reolink_talk.
+MIT, see `LICENSE`. Inherited from [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk).
