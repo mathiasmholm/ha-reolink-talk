@@ -46,9 +46,10 @@ This integration speaks the Baichuan binary protocol directly from Home Assistan
 
 ### 1. Install
 
-**Through HACS.** Add this repo as a custom repository (`https://github.com/mathiasmholm/ha-reolink-talk`, category **Integration**), then install **Reolink Talk (Two-Way Audio + Live Talk)**.
+Pick one:
+* **HACS** — add this repo as a custom repository (`https://github.com/mathiasmholm/ha-reolink-talk`, category **Integration**), then install **Reolink Talk (Two-Way Audio + Live Talk)**.
 
-**By hand.** Copy `custom_components/reolink_talk/` into your `config/custom_components/` directory.
+* **Manually** — copy `custom_components/reolink_talk/` into your `config/custom_components/` directory
 
 ### 2. Restart Home Assistant
 
