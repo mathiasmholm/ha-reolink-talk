@@ -2,7 +2,7 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 [![GitHub release](https://img.shields.io/github/v/release/mathiasmholm/ha-reolink-talk)](https://github.com/mathiasmholm/ha-reolink-talk/releases)
-[https://img.shields.io/badge/License-MIT-yellow.svg](https://github.com/mathiasmholm/ha-reolink-talk/blob/main/LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/mathiasmholm/ha-reolink-talk/blob/main/LICENSE)
 
 Two-way audio for Reolink cameras in Home Assistant, including cameras behind a Reolink Home Hub or NVR. Everything runs inside Home Assistant's own HTTP server, so there is no separate process, no extra port and no reverse proxy.
 
