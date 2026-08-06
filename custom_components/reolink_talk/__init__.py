@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 
-from homeassistant.components.frontend import add_extra_js_url
 from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -69,7 +68,6 @@ async def _async_register_frontend(hass: HomeAssistant) -> None:
             )
         ]
     )
-    add_extra_js_url(hass, FRONTEND_URL)
     await _async_register_lovelace_resource(hass)
     hass.data[DOMAIN]["frontend_registered"] = True
 
