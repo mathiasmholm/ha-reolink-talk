@@ -22,6 +22,19 @@
 // rejects any connection without a valid token.
 
 class ReolinkTalkButton extends HTMLElement {
+  // Build the DOM in the constructor. Hosts differ in when they call
+  // setConfig() and when they attach the element, and on a hard reload
+  // (pull-to-refresh in the iOS Companion App in particular) a host can
+  // measure the element before either has happened. Rendering here means
+  // there is always a button present, whatever order the host uses.
+  constructor() {
+    super();
+    this._recording = false;
+    this._wsReady = false;
+    this._cooldown = false;
+    this._render();
+  }
+
   setConfig(config) {
     this._config = config || {};
     this._camera = this._config.camera || "";
@@ -30,15 +43,8 @@ class ReolinkTalkButton extends HTMLElement {
     }
     this._recording = false;
     this._wsReady = false;
-    if (this.isConnected) {
-      this._render();
-    }
   }
 
-  // Render on connect rather than in setConfig(). A host may call setConfig()
-  // before the element is attached to the document, and on a hard reload
-  // (pull-to-refresh in the iOS Companion App in particular) that leaves the
-  // host reading an element whose DOM isn't built yet.
   connectedCallback() {
     if (!this._btn) {
       this._render();
@@ -54,6 +60,8 @@ class ReolinkTalkButton extends HTMLElement {
   }
 
   _render() {
+    if (this._btn) return;
+
     // An inline SVG (not an emoji) so the icon looks identical on every
     // platform -- emoji glyph rendering for U+1F399 varies wildly across
     // Android/iOS WebView versions and can show up as an ugly fallback glyph.
@@ -65,11 +73,14 @@ class ReolinkTalkButton extends HTMLElement {
     const btnStyle = 'width:48px;height:48px;border-radius:50%;border:none;background:rgba(0,0,0,0.5);color:#fff;line-height:1;display:flex;align-items:center;justify-content:center;touch-action:none;-webkit-user-select:none;user-select:none;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4);transition:background 0.1s ease,transform 0.1s ease;';
     this.innerHTML = '<button id="rtb-btn" style="' + btnStyle + '">' + micSvg + '</button>';
     this._btn = this.querySelector("#rtb-btn");
-    this._cooldown = false;
     this._btn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
       if (this._cooldown) return;
+      if (!this._camera) {
+        console.error("reolink-talk-button: no camera configured yet");
+        return;
+      }
       if (this._recording) {
         this._stop();
       } else {
