@@ -17,9 +17,9 @@
 // this integration creates). If unsure, connect once with any value -- the
 // resulting error lists every valid slug.
 //
-// Auth: before opening the audio socket, a short-lived single-use token is
-// requested over Home Assistant's own authenticated WebSocket API. The audio
-// socket rejects any connection without a valid token.
+// Auth: before opening the audio socket, a short-lived token is requested
+// over Home Assistant's own authenticated WebSocket API. The audio socket
+// rejects any connection without a valid token.
 
 class ReolinkTalkButton extends HTMLElement {
   setConfig(config) {
@@ -30,7 +30,19 @@ class ReolinkTalkButton extends HTMLElement {
     }
     this._recording = false;
     this._wsReady = false;
-    this._render();
+    if (this.isConnected) {
+      this._render();
+    }
+  }
+
+  // Render on connect rather than in setConfig(). A host may call setConfig()
+  // before the element is attached to the document, and on a hard reload
+  // (pull-to-refresh in the iOS Companion App in particular) that leaves the
+  // host reading an element whose DOM isn't built yet.
+  connectedCallback() {
+    if (!this._btn) {
+      this._render();
+    }
   }
 
   set hass(hass) {
@@ -86,7 +98,7 @@ class ReolinkTalkButton extends HTMLElement {
   }
 
   // Ask Home Assistant -- over its own authenticated WebSocket connection --
-  // for a short-lived token authorising one talk session on this camera.
+  // for a short-lived token authorising a talk session on this camera.
   async _requestToken() {
     if (!this._hass || !this._hass.connection) {
       throw new Error("Home Assistant connection not available to this element");
@@ -195,7 +207,7 @@ class ReolinkTalkButton extends HTMLElement {
     }
     this._ws = null;
     this._cooldown = true;
-    this._btn.style.opacity = "0.5";
+    if (this._btn) this._btn.style.opacity = "0.5";
     setTimeout(() => {
       this._cooldown = false;
       if (this._btn) this._btn.style.opacity = "1";
