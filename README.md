@@ -27,7 +27,7 @@ This integration speaks the Baichuan binary protocol directly from Home Assistan
 * IMA/DVI-4 ADPCM encoding in Python, matched to whatever the camera advertises in `TalkAbility` (`length_per_encoder`, sample rate).
 * Config flow setup through the UI. No YAML, no IP addresses, no channel numbers to hand-edit.
 * One `media_player` entity per camera channel for TTS and file playback.
-* A Lovelace element, `reolink-talk-button`, served by the integration itself and registered automatically. No manual file copying, no Lovelace resource to add.
+* A Lovelace element, `reolink-talk-button`, served by the integration and registered as a Lovelace resource automatically. No manual file copying, no resource to add by hand.
 * The element overlays a camera card you already have. Tapping it opens an audio WebSocket only, reusing the video connection the card already holds open.
 * Automatic recovery from a talk session the camera never closed. Baichuan rejection codes 400, 421 and 422 trigger a stop and one retry.
 * Client-side cooldown so rapid re-tapping doesn't race itself.
@@ -130,6 +130,7 @@ A `421` from `TalkConfig` (or a `400` or `422`) means a previous session on that
 | Symptom | Cause |
 |---------|-------|
 | The button doesn't render at all | Cached frontend. Hard-reload the browser, or clear the frontend cache in the Companion App. |
+| The button shows "Configuration error" after a hard reload on iOS | The element didn't finish registering before the card rendered. Check that `/reolink_talk/reolink-talk-button.js` is listed under **Settings → Dashboards → ⋮ → Resources**, then clear the frontend cache in the Companion App. |
 | "unknown camera" in the WebSocket response | Wrong slug in `camera:`. The error message lists every valid one. |
 | "undefined is not an object (evaluating 'navigator.mediaDevices.getUserMedia')" | Not a valid HTTPS origin. See [Limitations](#limitations). |
 | Talk fails with a `421` and doesn't recover | The camera has a stuck session. Restart the camera or the hub. |
