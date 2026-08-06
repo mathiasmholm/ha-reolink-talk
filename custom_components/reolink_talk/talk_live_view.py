@@ -79,7 +79,7 @@ def _consume_token(hass: HomeAssistant, token: str | None, camera_slug: str | No
         return False
     store = _token_store(hass)
     _purge_expired(store)
-    entry = store.pop(token, None)
+    entry = store.get(token)
     if entry is None:
         return False
     issued_for, expires_at = entry
