@@ -1,8 +1,8 @@
 # ha-reolink-talk
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
-[![GitHub release](https://img.shields.io/github/v/release/mathiasmholm/ha-reolink-talk)](https://github.com/mathiasmholm/ha-reolink-talk/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/mathiasmholm/ha-reolink-talk/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/matthewholm/ha-reolink-talk)](https://github.com/matthewholm/ha-reolink-talk/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/matthewholm/ha-reolink-talk/blob/main/LICENSE)
 
 Two-way audio for Reolink cameras in Home Assistant, including cameras behind a Reolink Home Hub or NVR. Everything runs inside Home Assistant's own HTTP server, so there is no separate process, no extra port and no reverse proxy.
 
@@ -47,7 +47,7 @@ This integration speaks the Baichuan binary protocol directly from Home Assistan
 ### 1. Install
 
 Pick one:
-* **HACS** — add this repo as a custom repository (`https://github.com/mathiasmholm/ha-reolink-talk`, category **Integration**), then install **Reolink Talk (Two-Way Audio + Live Talk)**.
+* **HACS** — add this repo as a custom repository (`https://github.com/matthewholm/ha-reolink-talk`, category **Integration**), then install **Reolink Talk (Two-Way Audio + Live Talk)**.
 
 * **Manually** — copy `custom_components/reolink_talk/` into your `config/custom_components/` directory
 
@@ -183,4 +183,4 @@ This can't be fixed in application code, it's a browser security boundary. Set b
 
 ## License
 
-MIT, see [LICENSE](https://github.com/mathiasmholm/ha-reolink-talk/blob/main/LICENSE). Inherited from [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk).
+MIT, see [LICENSE](https://github.com/matthewholm/ha-reolink-talk/blob/main/LICENSE). Inherited from [joeblack2k/reolink_talk](https://github.com/joeblack2k/reolink_talk).

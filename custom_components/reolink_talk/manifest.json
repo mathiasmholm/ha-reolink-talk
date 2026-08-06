@@ -2,16 +2,16 @@
   "domain": "reolink_talk",
   "name": "Reolink Talk (Two-Way Audio)",
   "codeowners": [
-    "@mathiasmholm"
+    "@matthewholm"
   ],
   "config_flow": true,
   "dependencies": [
     "http",
     "reolink"
   ],
-  "documentation": "https://github.com/mathiasmholm/ha-reolink-talk",
+  "documentation": "https://github.com/matthewholm/ha-reolink-talk",
   "iot_class": "local_push",
-  "issue_tracker": "https://github.com/mathiasmholm/ha-reolink-talk/issues",
+  "issue_tracker": "https://github.com/matthewholm/ha-reolink-talk/issues",
   "requirements": [],
-  "version": "0.3.2"
+  "version": "1.1.1"
 }
