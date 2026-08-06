@@ -22,19 +22,6 @@
 // rejects any connection without a valid token.
 
 class ReolinkTalkButton extends HTMLElement {
-  // Build the DOM in the constructor. Hosts differ in when they call
-  // setConfig() and when they attach the element, and on a hard reload
-  // (pull-to-refresh in the iOS Companion App in particular) a host can
-  // measure the element before either has happened. Rendering here means
-  // there is always a button present, whatever order the host uses.
-  constructor() {
-    super();
-    this._recording = false;
-    this._wsReady = false;
-    this._cooldown = false;
-    this._render();
-  }
-
   setConfig(config) {
     this._config = config || {};
     this._camera = this._config.camera || "";
@@ -43,8 +30,11 @@ class ReolinkTalkButton extends HTMLElement {
     }
     this._recording = false;
     this._wsReady = false;
+    this._cooldown = false;
+    if (this.isConnected) {
+      this._render();
+    }
   }
-
   connectedCallback() {
     if (!this._btn) {
       this._render();
